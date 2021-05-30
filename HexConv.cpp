@@ -11,6 +11,7 @@
 // 10. hexnum = int(str(remainder3) + str(remainder2) + str(remainder1))
 
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <map>
 #include <math.h>
@@ -20,12 +21,20 @@
 using namespace std;
 
 const string hex_numbers = "0123456789ABCDEF";
+const array<string, 16> bin_numbers = {
+  "0000", "0001", "0010", "0011", "0100",
+  "0101", "0110", "0111", "1000", "1001",
+  "1010", "1011", "1100", "1101", "1110",
+  "1111"
+};
+
 
 class Hex {
 public:
-  Hex(int orignum) : val(orignum) {}
+  Hex() {}
   ~Hex() {}
-  void toHex() {
+  void toHexFromDecimal(int orignum) {
+    val = orignum;
     setHexmap();
     do {
       result = setResult(val);
@@ -35,7 +44,7 @@ public:
       hexstr.append(hexmap[remainders[i]]);
     }
   }
-  void toDecimal(string hexnum) {
+  void toDecimalFromHex(string hexnum) {
     if (hexnum.length() != 0) {
       for (int i = hexnum.length() - 1; i > -1; --i) {
         currentDigit = hex_numbers.find(hexnum[i]);
@@ -77,14 +86,14 @@ class Binary {
 public:
   Binary() {}
   ~Binary() {}
-  void toBinary(int orignum) {
+  void toBinaryFromDecimal(int orignum) {
     val = orignum;
     do {
       val /= 2;
       setRemainder();
     } while (val > 0);
   }
-  void toDecimal(string binnum) {
+  void toDecimalFromBinary(string binnum) {
     decimal = ct = 0;
     for (int i = binnum.length() - 1; i > -1; --i) {
       temp = binnum[ct];
@@ -93,20 +102,46 @@ public:
       ct++;
     }
   }
+  void toBinaryFromHex(string hexnum) {
+    setBinmap();
+    for (int i = 0; i < hexnum.length(); i++) {
+      temp = hexnum[i];
+      binarynum.append(binmap[temp]);
+    }
+    currentnum = binarynum;
+  }
+  void toHexFromBinary(string binnum) {
+    toDecimalFromBinary(binnum);
+    Hex* hex = new Hex();
+    hex->toHexFromDecimal(decimal);
+    hexadecnum = hex->getHex();
+    delete hex;
+  }
+  string getHex() const {
+    return hexadecnum;
+  }
   string getBinary() const {
-    return remainders;
+    return currentnum;
   }
   int getDecimal() const {
     return decimal;
   }
 private:
+  void setBinmap() {
+    for (int i = 0; i < bin_numbers.size(); i++) {
+      temp = hex_numbers[i];
+      binmap[temp] = bin_numbers[i];
+    }
+  }
   void setRemainder() {
     remainder = val % 2;
     remainders.insert(0, to_string(remainder));
+    currentnum = remainders;
   }
   int val, remainder, bitnum, digit, decimal, ct;
-  string remainders, temp;
+  string remainders, temp, binarynum, hexadecnum, currentnum;
   string::size_type st;
+  map<string, string> binmap, binmap2;
 };
 
 int main(int argc, char* argv[]) {
@@ -125,17 +160,17 @@ int main(int argc, char* argv[]) {
     }
     num = stoi(input, &sz);
 
-    // TO HEXADECIMAL
-    Hex hex(num);
-    hex.toHex();
+    // DECIMAL TO HEXADECIMAL
+    Hex hex;
+    hex.toHexFromDecimal(num);
     cout << "hexadecimal -> " << hex.getHex() << endl;
 
-    // TO BINARY
+    // DECIMAL TO BINARY
     Binary bin;
-    bin.toBinary(num);
+    bin.toBinaryFromDecimal(num);
     cout << "binary -> " << bin.getBinary() << endl;
 
-    // TO DECIMAL FROM HEX
+    // HEXADECIMAL TO DECIMAL
     cout << "Enter a hexadecimal number: ";
     cin >> input;
     ct = 0;
@@ -146,10 +181,14 @@ int main(int argc, char* argv[]) {
       }
       ct++;
     }
-    hex.toDecimal(input);
+    hex.toDecimalFromHex(input);
     cout << "decimal -> " << hex.getDecimal() << endl;
 
-    // TO DECIMAL FROM BINARY
+    // HEXADECIMAL TO BINARY
+    bin.toBinaryFromHex(input);
+    cout << "binary -> " << bin.getBinary() << endl;
+
+    // BINARY TO DECIMAL
     cout << "Enter a binary number: ";
     cin >> input;
     ct = 0;
@@ -160,8 +199,12 @@ int main(int argc, char* argv[]) {
       }
       ct++;
     }
-    bin.toDecimal(input);
+    bin.toDecimalFromBinary(input);
     cout << "decimal -> " << bin.getDecimal() << endl;
+
+    // BINARY TO HEXADECIMAL
+    bin.toHexFromBinary(input);
+    cout << "hexadecimal -> " << bin.getHex() << endl;
 
     // CONTINUE?
     cout << "Again? (y/n): ";
