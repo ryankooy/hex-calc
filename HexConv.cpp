@@ -62,11 +62,14 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-  string input = argv[1];
+  int num;
   string::size_type sz;
-  int num = stoi(input, &sz);
+  string input;
+  cout << "Enter a number: ";
+  cin >> input;
+  num = stoi(input, &sz);
   Hex hex(num);
   hex.toHex();
-  cout << hex.getHex() << endl;
+  cout << input << " to hexadecimal is " << hex.getHex() << endl;
   return 0;
 }
