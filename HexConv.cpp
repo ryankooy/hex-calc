@@ -73,10 +73,31 @@ private:
   map<int, string> hexmap;
 };
 
+class Binary {
+public:
+  Binary() {}
+  ~Binary() {}
+  void toBinary(int orignum) {
+    dividend = orignum;
+    do {
+      quotient = dividend / 2;
+      remainder = dividend % 2;
+      remainders.insert(0, to_string(remainder));
+      dividend = quotient;
+    } while (quotient > 0);
+  }
+  string getBinary() const {
+    return remainders;
+  }
+private:
+  int dividend, quotient, remainder, bitnum;
+  string remainders;
+};
+
 int main(int argc, char* argv[]) {
   int num, ct = 0;
   string::size_type sz;
-  string input, hexnum;
+  string input, hexnum, binnum;
   while (true) {
     if (!input.empty())
       input.clear();
@@ -90,15 +111,27 @@ int main(int argc, char* argv[]) {
       ct++;
     }
     num = stoi(input, &sz);
+
+    // TO HEXADECIMAL
     Hex hex(num);
     hex.toHex();
     hexnum = hex.getHex();
     cout << "hexadecimal -> " << hexnum << endl;
+
+    // TO BINARY
+    Binary bin;
+    bin.toBinary(num);
+    binnum = bin.getBinary();
+    cout << "binary -> " << binnum << endl;
     input.clear();
+
+    // TO DECIMAL
     cout << "Enter a hexadecimal number: ";
     cin >> input;
     hex.toDecimal(input);
     cout << "decimal -> " << hex.getDecimal() << endl;
+
+    // CONTINUE?
     cout << "Again? (y/n): ";
     input.clear();
     cin >> input;
