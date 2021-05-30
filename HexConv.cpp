@@ -78,30 +78,43 @@ public:
   Binary() {}
   ~Binary() {}
   void toBinary(int orignum) {
-    dividend = orignum;
+    val = orignum;
     do {
-      quotient = dividend / 2;
-      remainder = dividend % 2;
-      remainders.insert(0, to_string(remainder));
-      dividend = quotient;
-    } while (quotient > 0);
+      val /= 2;
+      setRemainder();
+    } while (val > 0);
+  }
+  void toDecimal(string binnum) {
+    decimal = ct = 0;
+    for (int i = binnum.length() - 1; i > -1; --i) {
+      temp = binnum[ct];
+      digit = stoi(temp, &st);
+      decimal += (digit * pow(2, i));
+      ct++;
+    }
   }
   string getBinary() const {
     return remainders;
   }
+  int getDecimal() const {
+    return decimal;
+  }
 private:
-  int dividend, quotient, remainder, bitnum;
-  string remainders;
+  void setRemainder() {
+    remainder = val % 2;
+    remainders.insert(0, to_string(remainder));
+  }
+  int val, remainder, bitnum, digit, decimal, ct;
+  string remainders, temp;
+  string::size_type st;
 };
 
 int main(int argc, char* argv[]) {
   int num, ct = 0;
   string::size_type sz;
-  string input, hexnum, binnum;
+  string input;
   while (true) {
-    if (!input.empty())
-      input.clear();
-    cout << "Enter a number: ";
+    cout << "Enter a decimal number: ";
     cin >> input;
     while (input[ct]) {
       if (isalpha(input[ct])) {
@@ -115,25 +128,43 @@ int main(int argc, char* argv[]) {
     // TO HEXADECIMAL
     Hex hex(num);
     hex.toHex();
-    hexnum = hex.getHex();
-    cout << "hexadecimal -> " << hexnum << endl;
+    cout << "hexadecimal -> " << hex.getHex() << endl;
 
     // TO BINARY
     Binary bin;
     bin.toBinary(num);
-    binnum = bin.getBinary();
-    cout << "binary -> " << binnum << endl;
-    input.clear();
+    cout << "binary -> " << bin.getBinary() << endl;
 
-    // TO DECIMAL
+    // TO DECIMAL FROM HEX
     cout << "Enter a hexadecimal number: ";
     cin >> input;
+    ct = 0;
+    while (input[ct]) {
+      if (hex_numbers.find(input[ct]) == -1) {
+        cout << "Not a valid hexadecimal number" << endl;
+        exit(EXIT_FAILURE);
+      }
+      ct++;
+    }
     hex.toDecimal(input);
     cout << "decimal -> " << hex.getDecimal() << endl;
 
+    // TO DECIMAL FROM BINARY
+    cout << "Enter a binary number: ";
+    cin >> input;
+    ct = 0;
+    while (input[ct]) {
+      if (input[ct] != '0' && input[ct] != '1') {
+        cout << "Not a valid binary number" << endl;
+        exit(EXIT_FAILURE);
+      }
+      ct++;
+    }
+    bin.toDecimal(input);
+    cout << "decimal -> " << bin.getDecimal() << endl;
+
     // CONTINUE?
     cout << "Again? (y/n): ";
-    input.clear();
     cin >> input;
     while (true) {
       if (input == "y" || input == "Y")
@@ -142,7 +173,6 @@ int main(int argc, char* argv[]) {
         exit(EXIT_SUCCESS);
       else {
         cout << "Again? (y/n): ";
-        input.clear();
         cin >> input;
       }
     }
