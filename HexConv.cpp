@@ -10,6 +10,7 @@
 // 9. remainder3 = (val3 - result3) * 16e
 // 10. hexnum = int(str(remainder3) + str(remainder2) + str(remainder1))
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <math.h>
@@ -34,11 +35,22 @@ public:
       hexstr.append(hexmap[remainders[i]]);
     }
   }
-  void toDecimal() {
-    
+  void toDecimal(string hexnum) {
+    if (hexnum.length() != 0) {
+      for (int i = hexnum.length() - 1; i > -1; --i) {
+        currentDigit = hex_numbers.find(hexnum[i]);
+        decnum += (currentDigit * pow(16, power));
+        power++;
+      }
+    } else {
+      cout << "no hexadecimal value" << endl;
+    }
   }
   string getHex() const {
     return hexstr;
+  }
+  int getDecimal() const {
+    return decnum;
   }
 private:
   void setHexmap() {
@@ -54,7 +66,7 @@ private:
     remainder = (val - result) * 16;
     remainders.push_back(remainder);
   }
-  int hexnum, remainder, result, currentDigit, power;
+  int remainder, result, currentDigit, power = 0, decnum = 0;
   double val;
   string hexstr = "";
   vector<int> remainders;
@@ -64,12 +76,18 @@ private:
 int main(int argc, char* argv[]) {
   int num;
   string::size_type sz;
-  string input;
+  string input, hexnum;
   cout << "Enter a number: ";
   cin >> input;
   num = stoi(input, &sz);
   Hex hex(num);
   hex.toHex();
-  cout << input << " to hexadecimal is " << hex.getHex() << endl;
+  hexnum = hex.getHex();
+  cout << "hexadecimal -> " << hexnum << endl;
+  input.clear();
+  cout << "Enter a hexadecimal number: ";
+  cin >> input;
+  hex.toDecimal(input);
+  cout << "decimal -> " << hex.getDecimal() << endl;
   return 0;
 }
