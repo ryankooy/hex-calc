@@ -47,7 +47,7 @@ public:
     }
   }
   string getHex() const {
-    return hexstr;
+    return "0x" + hexstr;
   }
   int getDecimal() const {
     return decnum;
@@ -74,20 +74,45 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-  int num;
+  int num, ct = 0;
   string::size_type sz;
   string input, hexnum;
-  cout << "Enter a number: ";
-  cin >> input;
-  num = stoi(input, &sz);
-  Hex hex(num);
-  hex.toHex();
-  hexnum = hex.getHex();
-  cout << "hexadecimal -> " << hexnum << endl;
-  input.clear();
-  cout << "Enter a hexadecimal number: ";
-  cin >> input;
-  hex.toDecimal(input);
-  cout << "decimal -> " << hex.getDecimal() << endl;
+  while (true) {
+    if (!input.empty())
+      input.clear();
+    cout << "Enter a number: ";
+    cin >> input;
+    while (input[ct]) {
+      if (isalpha(input[ct])) {
+        cout << "Not a valid decimal number" << endl;
+        exit(EXIT_FAILURE);
+      }
+      ct++;
+    }
+    num = stoi(input, &sz);
+    Hex hex(num);
+    hex.toHex();
+    hexnum = hex.getHex();
+    cout << "hexadecimal -> " << hexnum << endl;
+    input.clear();
+    cout << "Enter a hexadecimal number: ";
+    cin >> input;
+    hex.toDecimal(input);
+    cout << "decimal -> " << hex.getDecimal() << endl;
+    cout << "Again? (y/n): ";
+    input.clear();
+    cin >> input;
+    while (true) {
+      if (input == "y" || input == "Y")
+        break;
+      else if (input == "n" || input == "N")
+        exit(EXIT_SUCCESS);
+      else {
+        cout << "Again? (y/n): ";
+        input.clear();
+        cin >> input;
+      }
+    }
+  }
   return 0;
 }
