@@ -111,8 +111,8 @@ public:
     currentnum = binarynum;
   }
   void toHexFromBinary(string binnum) {
-    toDecimalFromBinary(binnum);
     Hex* hex = new Hex();
+    toDecimalFromBinary(binnum);
     hex->toHexFromDecimal(decimal);
     hexadecnum = hex->getHex();
     delete hex;
