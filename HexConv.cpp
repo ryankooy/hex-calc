@@ -212,9 +212,10 @@ int main(int argc, char* argv[]) {
     while (true) {
       if (input == "y" || input == "Y")
         break;
-      else if (input == "n" || input == "N")
+      else if (input == "n" || input == "N") {
+        cout << "Bye.\n";
         exit(EXIT_SUCCESS);
-      else {
+      } else {
         cout << "Again? (y/n): ";
         cin >> input;
       }
