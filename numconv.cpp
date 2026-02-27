@@ -1,24 +1,30 @@
+#include "numconv.h"
 #include <algorithm>
 #include <array>
 #include <iostream>
-#include <map>
-#include <math.h>
 #include <string>
-#include <vector>
 
 using namespace std;
 
-const string hex_numbers = "0123456789ABCDEF";
-const array<string, 16> bin_numbers = {
-  "0000", "0001", "0010", "0011", "0100",
-  "0101", "0110", "0111", "1000", "1001",
-  "1010", "1011", "1100", "1101", "1110",
-  "1111"
-};
+const string usage = R"(
+Usage
+    numconv hex|bin|dec --from-hex|--from-bin|--from-dec NUMBER
+Commands
+    hex     Convert to hexadecimal
+    bin     Convert to binary
+    dec     Convert to decimal
+Options
+    --from-hex, -x  Parse argument as hexadecimal
+    --from-bin, -b  Parse argument as binary
+    --from-dec, -d  Parse argument as decimal
+Arguments
+    NUMBER  An integer to be parsed according to the
+            provided option
+)";
 
 
 // // repeat until result == 0
-// 1. val1 = decnum / 16
+// 1. val1 = dec_num / 16
 // 2. result1 = floor(val)
 // 3. remainder1 = (val - result1) * 16 // IN DECIMAL
 // 4. val2 = result1 / 16
@@ -30,147 +36,237 @@ const array<string, 16> bin_numbers = {
 // 10. hexnum = int(str(remainder3) + str(remainder2) + str(remainder1))
 
 
-class Hex {
-public:
-	Hex() {}
-	~Hex() {}
+string Super::getHex() const {
+    return "0x" + hex_num_str;
+}
 
-	void toHexFromDecimal(int orignum) {
-		val = orignum;
-		setHexmap();
+int Super::getDecimal() const {
+    return dec_num;
+}
 
-		do {
-			result = setResult(val);
-			setRemainder();
-		} while (result > 0);
+Hex::Hex() {}
+Hex::~Hex() {}
 
-		for (int i = remainders.size() - 1; i > -1; --i) {
-			hexstr.append(hexmap[remainders[i]]);
-		}
-	}
+void Hex::toHexFromDecimal(int num) {
+    val = num;
+    setHexmap();
 
-	void toDecimalFromHex(string hexnum) {
-		if (hexnum.length() != 0) {
-			for (int i = hexnum.length() - 1; i > -1; --i) {
-				currentDigit = hex_numbers.find(hexnum[i]);
-				decnum += (currentDigit * pow(16, power));
-				power++;
-			}
-		} else {
-			cout << "no hexadecimal value" << endl;
-		}
-	}
+    do {
+        result = setResult(val);
+        setRemainder();
+    } while (result > 0);
 
-	string getHex() const {
-		return "0x" + hexstr;
-	}
+    for (int i = remainders.size() - 1; i > -1; --i) {
+        hex_num_str.append(hex_map[remainders[i]]);
+    }
+}
 
-	int getDecimal() const {
-		return decnum;
-	}
-private:
-	void setHexmap() {
-		for (int i = 0; i < hex_numbers.length(); i++) {
-			hexmap[i] = hex_numbers[i];
-		}
-	}
+void Hex::toDecimalFromHex(string num_str) {
+    dec_num = power = 0;
 
-	int setResult(double value) {
-		val = value / 16;
-		return floor(val);
-	}
+    if (num_str.length() != 0) {
+        for (int i = num_str.length() - 1; i > -1; --i) {
+            digit = hex_numbers.find(num_str[i]);
+            dec_num += (digit * pow(16, power));
+            power++;
+        }
+    } else {
+        cout << "no hexadecimal value" << endl;
+    }
+}
 
-	void setRemainder() {
-		remainder = (val - result) * 16;
-		remainders.push_back(remainder);
-	}
+Binary::Binary() {}
+Binary::~Binary() {}
 
-	int remainder, result, currentDigit, power = 0, decnum = 0;
-	double val;
-	string hexstr = "";
-	vector<int> remainders;
-	map<int, string> hexmap;
-};
+void Binary::toBinaryFromDecimal(int num) {
+    val = num;
+    do {
+        val /= 2;
+        setRemainder();
+    } while (val > 0);
+}
 
+void Binary::toDecimalFromBinary(string num_str) {
+    dec_num = ct = 0;
 
-class Binary {
-public:
-	Binary() {}
-	~Binary() {}
+    for (int i = num_str.length() - 1; i > -1; --i) {
+        temp = num_str[ct];
+        digit = stoi(temp, &st);
+        dec_num += (digit * pow(2, i));
+        ct++;
+    }
+}
 
-	void toBinaryFromDecimal(int orignum) {
-		val = orignum;
-		do {
-			val /= 2;
-			setRemainder();
-		} while (val > 0);
-	}
+void Binary::toBinaryFromHex(string num_str) {
+    setBinmap();
 
-	void toDecimalFromBinary(string binnum) {
-		decimal = ct = 0;
+    for (int i = 0; i < num_str.length(); i++) {
+        temp = num_str[i];
+        bin_num_str.append(bin_map[temp]);
+    }
+    curr_num_str = bin_num_str;
+}
 
-		for (int i = binnum.length() - 1; i > -1; --i) {
-			temp = binnum[ct];
-			digit = stoi(temp, &st);
-			decimal += (digit * pow(2, i));
-			ct++;
-		}
-	}
+void Binary::toHexFromBinary(string num_str) {
+    Hex* hex = new Hex();
+    toDecimalFromBinary(num_str);
+    hex->toHexFromDecimal(dec_num);
+    hex_num_str = hex->getHex();
+    delete hex;
+}
 
-	void toBinaryFromHex(string hexnum) {
-		setBinmap();
+string Binary::getBinary() const {
+    return curr_num_str;
+}
 
-		for (int i = 0; i < hexnum.length(); i++) {
-			temp = hexnum[i];
-			binarynum.append(binmap[temp]);
-		}
-		currentnum = binarynum;
-	}
+NumType commandToNumType(const string& cmd) {
+    if (cmd == "hex") return NumType::Hexadecimal;
+    if (cmd == "bin") return NumType::Binary;
+    if (cmd == "dec") return NumType::Decimal;
+    return NumType::Unknown;
+}
 
-	void toHexFromBinary(string binnum) {
-		Hex* hex = new Hex();
-		toDecimalFromBinary(binnum);
-		hex->toHexFromDecimal(decimal);
-		hexadecnum = hex->getHex();
-		delete hex;
-	}
+NumType optionToNumType(const string& opt) {
+    if (opt == "--from-hex" || opt == "-x")
+        return NumType::Hexadecimal;
+    if (opt == "--from-bin" || opt == "-b")
+        return NumType::Binary;
+    if (opt == "--from-dec" || opt == "-d")
+        return NumType::Decimal;
+    return NumType::Unknown;
+}
 
-	string getHex() const {
-		return hexadecnum;
-	}
+bool valid_hex(string value) {
+    int ct = 0;
+    while (value[ct]) {
+        if (hex_numbers.find(value[ct]) == -1)
+            return false;
+        ct++;
+    }
+    return true;
+}
 
-	string getBinary() const {
-		return currentnum;
-	}
+bool valid_binary(string value) {
+    int ct = 0;
+    while (value[ct]) {
+        if (value[ct] != '0' && value[ct] != '1')
+            return false;
+        ct++;
+    }
+    return true;
+}
 
-	int getDecimal() const {
-		return decimal;
-	}
-private:
-	void setBinmap() {
-		for (int i = 0; i < bin_numbers.size(); i++) {
-			temp = hex_numbers[i];
-			binmap[temp] = bin_numbers[i];
-		}
-	}
-
-	void setRemainder() {
-		remainder = val % 2;
-		remainders.insert(0, to_string(remainder));
-		currentnum = remainders;
-	}
-
-	int val, remainder, bitnum, digit, decimal, ct;
-	string remainders, temp, binarynum, hexadecnum, currentnum;
-	string::size_type st;
-	map<string, string> binmap, binmap2;
-};
-
+bool valid_decimal(string value) {
+    int ct = 0;
+    while (value[ct]) {
+        if (isalpha(value[ct]))
+            return false;
+        ct++;
+    }
+    return true;
+}
 
 int main(int argc, char* argv[]) {
-	int num, ct = 0;
-	string::size_type sz;
-	string input;
+    int num, ct = 0;
+    string::size_type sz;
+    Hex hex;
+    Binary bin;
+
+    if (argc > 1) {
+        if (argv[1] == "--help" || argv[1] == "-h") {
+            cout << usage << endl;
+            return 0;
+        }
+
+        if (argc < 4) {
+            cout << usage << endl;
+            exit(EXIT_FAILURE);
+        }
+
+        NumType command = commandToNumType(argv[1]);
+        NumType option = optionToNumType(argv[2]);
+        string num_str = argv[3];
+
+        switch (option) {
+            case NumType::Hexadecimal:
+                if (!valid_hex(num_str)) {
+                    cout << "Not a valid hexadecimal number" << endl;
+                    exit(EXIT_FAILURE);
+                }
+
+                switch (command) {
+                    case NumType::Hexadecimal:
+                        cout << "0x" + num_str << endl;
+                        break;
+                    case NumType::Binary:
+                        bin.toBinaryFromHex(num_str);
+                        cout << bin.getBinary() << endl;
+                        break;
+                    case NumType::Decimal:
+                        hex.toDecimalFromHex(num_str);
+                        cout << hex.getDecimal() << endl;
+                        break;
+                    default:
+                        cout << usage << endl;
+                        exit(EXIT_FAILURE);
+                }
+                break;
+            case NumType::Binary:
+                if (!valid_binary(num_str)) {
+                    cout << "Not a valid binary number" << endl;
+                    exit(EXIT_FAILURE);
+                }
+
+                switch (command) {
+                    case NumType::Hexadecimal:
+                        bin.toHexFromBinary(num_str);
+                        cout << bin.getHex() << endl;
+                        break;
+                    case NumType::Binary:
+                        cout << num_str << endl;
+                        break;
+                    case NumType::Decimal:
+                        bin.toDecimalFromBinary(num_str);
+                        cout << bin.getDecimal() << endl;
+                        break;
+                    default:
+                        cout << usage << endl;
+                        exit(EXIT_FAILURE);
+                }
+                break;
+            case NumType::Decimal:
+                if (!valid_decimal(num_str)) {
+                    cout << "Not a valid decimal number" << endl;
+                    exit(EXIT_FAILURE);
+                }
+                num = stoi(num_str, &sz);
+
+                switch (command) {
+                    case NumType::Hexadecimal:
+                        hex.toHexFromDecimal(num);
+                        cout << hex.getHex() << endl;
+                        break;
+                    case NumType::Binary:
+                        bin.toBinaryFromDecimal(num);
+                        cout << bin.getBinary() << endl;
+                        break;
+                    case NumType::Decimal:
+                        cout << num << endl;
+                        break;
+                    default:
+                        cout << usage << endl;
+                        exit(EXIT_FAILURE);
+                }
+                break;
+            default:
+                cout << usage << endl;
+                exit(EXIT_FAILURE);
+        }
+
+        return 0;
+    }
+
+    string input;
 
 	while (true) {
 		cout << "Enter a decimal number: ";
@@ -187,12 +283,10 @@ int main(int argc, char* argv[]) {
 		num = stoi(input, &sz);
 
 		// DECIMAL TO HEXADECIMAL
-		Hex hex;
 		hex.toHexFromDecimal(num);
 		cout << "hexadecimal -> " << hex.getHex() << endl;
 
 		// DECIMAL TO BINARY
-		Binary bin;
 		bin.toBinaryFromDecimal(num);
 		cout << "binary -> " << bin.getBinary() << endl;
 
