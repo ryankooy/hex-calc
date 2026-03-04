@@ -12,8 +12,9 @@ using namespace std;
 
 enum class NumType {
     Hexadecimal,
-    Binary,
     Decimal,
+    Octal,
+    Binary,
     Unknown,
 };
 
@@ -26,57 +27,152 @@ const array<string, 16> bin_numbers = {
   "1111"
 };
 
-class Super {
+template<typename T>
+class Conv {
 public:
-    string getHex() const;
-    int getDecimal() const;
+    T& fromHex(const string& num_str) {
+        return static_cast<T*>(this)->implFromHex(num_str);
+    }
+
+    T& fromDecimal(const int& num) {
+        return static_cast<T*>(this)->implFromDecimal(num);
+    }
+
+    T& fromOctal(const int& num) {
+        return static_cast<T*>(this)->implFromOctal(num);
+    }
+
+    T& fromBinary(const string& num_str) {
+        return static_cast<T*>(this)->implFromBinary(num_str);
+    }
 
 protected:
-    int remainder, dec_num, digit;
-    string hex_num_str, bin_num_str;
+    Conv() = default;
+    ~Conv() = default;
+
+    void setRemainder();
+    void reset();
+
+    inline int getQuotient(const double& num) {
+        val = num / base;
+        return floor(val);
+    }
+
+    int dec_num, quotient, remainder, base = 10;
+	double val;
+    string remainders_str, temp;
+	string::size_type sz;
 };
 
-class Hex : public Super {
+class Hex : public Conv<Hex> {
 public:
-	Hex();
-	virtual ~Hex();
-	void toHexFromDecimal(int num);
-	void toDecimalFromHex(string num_str);
+    Hex() {
+        setHexmap();
+        base = 16;
+    }
+
+    Hex& implFromDecimal(const int& num);
+    Hex& implFromOctal(const int& num);
+    Hex& implFromBinary(const string& num_str);
+
+    inline string getHex() const {
+        return "0x" + hex_num_str;
+    }
 
 private:
+	inline void setRemainder() {
+		remainder = (val - quotient) * base;
+		remainders.push_back(remainder);
+	}
+
+    inline void reset() {
+        hex_num_str = "";
+        remainders.clear();
+    }
+
 	inline void setHexmap() {
 		for (int i = 0; i < hex_numbers.length(); i++) {
 			hex_map[i] = hex_numbers[i];
 		}
 	}
 
-	inline int setResult(double num) {
-		val = num / 16;
-		return floor(val);
-	}
-
-	inline void setRemainder() {
-		remainder = (val - result) * 16;
-		remainders.push_back(remainder);
-	}
-
-	int result, power;
-	double val;
+    string hex_num_str;
 	vector<int> remainders;
 	map<int, string> hex_map;
 };
 
-class Binary : public Super {
+class Decimal : public Conv<Decimal> {
 public:
-	Binary();
-	virtual ~Binary();
-	void toBinaryFromDecimal(int num);
-	void toDecimalFromBinary(string num_str);
-	void toBinaryFromHex(string num_str);
-	void toHexFromBinary(string num_str);
-	string getBinary() const;
+    Decimal& implFromHex(const string& num_str);
+    Decimal& implFromOctal(const int& num);
+    Decimal& implFromBinary(const string& num_str);
+
+    inline int getDecimal() const {
+        return dec_num;
+    }
 
 private:
+    inline void reset() {
+        dec_num = ct = power = 0;
+    }
+
+    int ct, digit, power;
+};
+
+class Octal : public Conv<Octal> {
+public:
+    Octal() {
+        base = 8;
+    }
+
+    Octal& implFromHex(const string& num_str);
+    Octal& implFromDecimal(const int& num);
+    Octal& implFromBinary(const string& num_str);
+
+    inline string getOctal() const {
+        return oct_num_str;
+    }
+
+private:
+	inline void setRemainder() {
+		remainder = (val - quotient) * base;
+		remainders_str.insert(0, to_string(remainder));
+        oct_num_str = remainders_str;
+    }
+
+    inline void reset() {
+        remainders_str = "";
+    }
+
+    string oct_num_str;
+};
+
+class Binary : public Conv<Binary> {
+public:
+    Binary() {
+        setBinmap();
+        base = 2;
+    }
+
+    Binary& implFromHex(const string& num_str);
+    Binary& implFromDecimal(const int& num);
+    Binary& implFromOctal(const int& num);
+
+    inline string getBinary() const {
+        return bin_num_str;
+    }
+
+private:
+	inline void setRemainder() {
+		remainder = quotient % base;
+		remainders_str.insert(0, to_string(remainder));
+		bin_num_str = remainders_str;
+	}
+
+    inline void reset() {
+        bin_num_str = remainders_str = "";
+    }
+
 	inline void setBinmap() {
 		for (int i = 0; i < bin_numbers.size(); i++) {
 			temp = hex_numbers[i];
@@ -84,19 +180,23 @@ private:
 		}
     }
 
-	inline void setRemainder() {
-		remainder = val % 2;
-		remainders.insert(0, to_string(remainder));
-		curr_num_str = remainders;
-	}
+    inline string removeLeadingZeros() {
+        string trimmed = bin_num_str;
+        size_t first_one = trimmed.find_first_of('1');
 
-	int val, ct;
-	string remainders, temp, curr_num_str;
-	string::size_type st;
-	map<string, string> bin_map, bin_map2;
+        if (first_one != string::npos) {
+            trimmed.erase(0, first_one);
+            return trimmed;
+        }
+        return "0";
+    }
+
+    //int val;
+	string bin_num_str;
+	map<string, string> bin_map;
 };
 
-NumType stringToCommand(const string& cmd);
+NumType commandToNumType(const string& cmd);
 NumType optionToNumType(const string& opt);
 
 #endif
