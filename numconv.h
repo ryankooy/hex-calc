@@ -27,6 +27,20 @@ const array<string, 16> bin_numbers = {
   "1111"
 };
 
+#ifndef NDEBUG
+    #define ASSERT_MSG(condition, message) \
+        do { \
+            if (!(condition)) { \
+                cerr << "Assertion failed: (" #condition ") at " \
+                     << __FILE__ << ":" << __LINE__ << " - " \
+                     << message << endl; \
+                abort(); \
+            } \
+        } while (false)
+#else
+    #define ASSERT_MSG(condition, message) do { } while (false)
+#endif
+
 template<typename T>
 class Conv {
 public:
@@ -60,8 +74,8 @@ protected:
 
     int dec_num, quotient, remainder, base = 10;
 	double val;
-    string remainders_str, temp;
-	string::size_type sz;
+    string temp;
+	size_t sz;
 };
 
 class Hex : public Conv<Hex> {
@@ -136,12 +150,11 @@ public:
 private:
 	inline void setRemainder() {
 		remainder = (val - quotient) * base;
-		remainders_str.insert(0, to_string(remainder));
-        oct_num_str = remainders_str;
+		oct_num_str.insert(0, to_string(remainder));
     }
 
     inline void reset() {
-        remainders_str = "";
+        oct_num_str = "";
     }
 
     string oct_num_str;
@@ -164,13 +177,12 @@ public:
 
 private:
 	inline void setRemainder() {
-		remainder = quotient % base;
-		remainders_str.insert(0, to_string(remainder));
-		bin_num_str = remainders_str;
+		remainder = int_val % base;
+        bin_num_str.insert(0, to_string(remainder));
 	}
 
     inline void reset() {
-        bin_num_str = remainders_str = "";
+        bin_num_str = "";
     }
 
 	inline void setBinmap() {
@@ -180,21 +192,13 @@ private:
 		}
     }
 
-    inline string removeLeadingZeros() {
-        string trimmed = bin_num_str;
-        size_t first_one = trimmed.find_first_of('1');
-
-        if (first_one != string::npos) {
-            trimmed.erase(0, first_one);
-            return trimmed;
-        }
-        return "0";
-    }
-
-    //int val;
+    int int_val;
 	string bin_num_str;
 	map<string, string> bin_map;
 };
+
+string padLeadingZeros(const string& num_str);
+string removeLeadingZeros(const string& num_str);
 
 NumType commandToNumType(const string& cmd);
 NumType optionToNumType(const string& opt);

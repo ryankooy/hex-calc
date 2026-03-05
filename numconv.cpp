@@ -1,8 +1,13 @@
 #include "numconv.h"
 #include <algorithm>
 #include <array>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
+
+//temp:
+#include <cassert>
 
 using namespace std;
 
@@ -37,6 +42,27 @@ Arguments
 // 9. remainder3 = (val3 - result3) * 16e
 // 10. hexnum = int(str(remainder3) + str(remainder2) + str(remainder1))
 
+
+string padLeadingZeros(const string& num_str) {
+    size_t len = num_str.length();
+    int width = len + ((3 - (len % 3)) % 3);
+
+    stringstream ss;
+    ss << setfill('0') << setw(width) << num_str;
+
+    return ss.str();
+}
+
+string removeLeadingZeros(const string& num_str) {
+    size_t first_one = num_str.find_first_of('1');
+
+    if (first_one != string::npos) {
+        string trimmed_num_str = num_str;
+        trimmed_num_str.erase(0, first_one);
+        return trimmed_num_str;
+    }
+    return "0";
+}
 
 Hex& Hex::implFromDecimal(const int& num) {
     reset();
@@ -112,8 +138,23 @@ Octal& Octal::implFromDecimal(const int& num) {
     return *this;
 }
 
-//Octal& Octal::implFromBinary(const string& num_str) {
-//}
+Octal& Octal::implFromBinary(const string& num_str) {
+    reset();
+
+    Decimal* dec = new Decimal();
+    string bin_group, padded_num_str = padLeadingZeros(num_str);
+    int group_int;
+
+    for (int i = padded_num_str.length() - 3; i > -1; i -= 3) {
+        bin_group = padded_num_str.substr(i, 3);
+        group_int = dec->fromBinary(bin_group).getDecimal();
+        oct_num_str.insert(0, to_string(group_int));
+    }
+
+    delete dec;
+
+    return *this;
+}
 
 Binary& Binary::implFromHex(const string& num_str) {
     reset();
@@ -123,17 +164,21 @@ Binary& Binary::implFromHex(const string& num_str) {
         bin_num_str.append(bin_map[temp]);
     }
 
+    bin_num_str = removeLeadingZeros(bin_num_str);
+
     return *this;
 }
 
 Binary& Binary::implFromDecimal(const int& num) {
     reset();
 
-    val = num;
+    int_val = num;
     do {
-        quotient = getQuotient(val);
+        int_val /= base;
         setRemainder();
-    } while (quotient > 0);
+    } while (int_val > 0);
+
+    bin_num_str = removeLeadingZeros(bin_num_str);
 
     return *this;
 }
@@ -191,15 +236,35 @@ bool valid_decimal(string value) {
     return true;
 }
 
+void analyze(string expected, string actual) {
+    ASSERT_MSG(actual == expected, "Expected " + expected + ", got " + actual);
+}
+
+void test_conversions(Hex& hex, Decimal& dec, Octal& oct, Binary& bin) {
+    analyze("0x10", hex.fromDecimal(16).getHex());
+    analyze("0x10", hex.fromBinary("10000").getHex());
+
+    analyze("16", to_string(dec.fromHex("10").getDecimal()));
+    analyze("16", to_string(dec.fromBinary("10000").getDecimal()));
+
+    analyze("20", oct.fromDecimal(16).getOctal());
+
+    analyze("10000", bin.fromHex("10").getBinary());
+    //analyze("10000", bin.fromDecimal(16).getBinary());
+}
+
 int main(int argc, char* argv[]) {
     int num, ct = 0;
     string str_val;
-    string::size_type sz;
+    size_t sz;
 
     Hex hex;
     Decimal dec;
     Octal oct;
     Binary bin;
+
+    //temp:
+    test_conversions(hex, dec, oct, bin);
 
     if (argc > 1) {
         if (argv[1] == "--help" || argv[1] == "-h") {
@@ -259,7 +324,8 @@ int main(int argc, char* argv[]) {
                         cout << num << endl;
                         break;
                     case NumType::Octal:
-                        //TODO: implement
+                        str_val = oct.fromBinary(num_str).getOctal();
+                        cout << str_val << endl;
                         break;
                     case NumType::Binary:
                         cout << num_str << endl;
