@@ -15,11 +15,11 @@ enum class NumType {
     Decimal,
     Octal,
     Binary,
+    All,
     Unknown,
 };
 
 const string hex_numbers = "0123456789ABCDEF";
-
 const array<string, 16> bin_numbers = {
   "0000", "0001", "0010", "0011", "0100",
   "0101", "0110", "0111", "1000", "1001",
@@ -52,8 +52,8 @@ public:
         return static_cast<T*>(this)->implFromDecimal(num);
     }
 
-    T& fromOctal(const int& num) {
-        return static_cast<T*>(this)->implFromOctal(num);
+    T& fromOctal(const string& num_str) {
+        return static_cast<T*>(this)->implFromOctal(num_str);
     }
 
     T& fromBinary(const string& num_str) {
@@ -86,11 +86,18 @@ public:
     }
 
     Hex& implFromDecimal(const int& num);
-    Hex& implFromOctal(const int& num);
+    Hex& implFromOctal(const string& num_str);
     Hex& implFromBinary(const string& num_str);
 
     inline string getHex() const {
-        return "0x" + hex_num_str;
+        return hex_num_str;
+    }
+
+    inline Hex& formatHex() {
+        if (hex_num_str.length() != 0)
+            hex_num_str = "0x" + hex_num_str;
+
+        return *this;
     }
 
 private:
@@ -118,7 +125,7 @@ private:
 class Decimal : public Conv<Decimal> {
 public:
     Decimal& implFromHex(const string& num_str);
-    Decimal& implFromOctal(const int& num);
+    Decimal& implFromOctal(const string& num_str);
     Decimal& implFromBinary(const string& num_str);
 
     inline int getDecimal() const {
@@ -169,7 +176,7 @@ public:
 
     Binary& implFromHex(const string& num_str);
     Binary& implFromDecimal(const int& num);
-    Binary& implFromOctal(const int& num);
+    Binary& implFromOctal(const string& num_str);
 
     inline string getBinary() const {
         return bin_num_str;
@@ -198,7 +205,8 @@ private:
 };
 
 string padLeadingZeros(const string& num_str);
-string removeLeadingZeros(const string& num_str);
+void trimLeadingZeros(string& num_str);
+string trimPrefix(const string& num_str, const string& prefix);
 
 NumType commandToNumType(const string& cmd);
 NumType optionToNumType(const string& opt);
