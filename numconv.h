@@ -48,8 +48,8 @@ public:
         return static_cast<T*>(this)->implFromHex(num_str);
     }
 
-    T& fromDecimal(const int& num) {
-        return static_cast<T*>(this)->implFromDecimal(num);
+    T& fromDecimal(const string& num_str) {
+        return static_cast<T*>(this)->implFromDecimal(num_str);
     }
 
     T& fromOctal(const string& num_str) {
@@ -60,6 +60,10 @@ public:
         return static_cast<T*>(this)->implFromBinary(num_str);
     }
 
+    inline string get() const {
+        return result;
+    }
+
 protected:
     Conv() = default;
     ~Conv() = default;
@@ -67,15 +71,14 @@ protected:
     void setRemainder();
     void reset();
 
-    inline int getQuotient(const double& num) {
-        val = num / base;
-        return floor(val);
+    inline void setQuotient() {
+        dbl_val /= base;
+        quotient = floor(dbl_val);
     }
 
-    int dec_num, quotient, remainder, base = 10;
-	double val;
-    string temp;
-	size_t sz;
+    int quotient, remainder, base = 10;
+	double dbl_val;
+    string temp, result;
 };
 
 class Hex : public Conv<Hex> {
@@ -85,29 +88,25 @@ public:
         base = 16;
     }
 
-    Hex& implFromDecimal(const int& num);
+    Hex& implFromDecimal(const string& num_str);
     Hex& implFromOctal(const string& num_str);
     Hex& implFromBinary(const string& num_str);
 
-    inline string getHex() const {
-        return hex_num_str;
-    }
-
     inline Hex& formatHex() {
-        if (hex_num_str.length() != 0)
-            hex_num_str = "0x" + hex_num_str;
+        if (result.length() != 0)
+            result = "0x" + result;
 
         return *this;
     }
 
 private:
 	inline void setRemainder() {
-		remainder = (val - quotient) * base;
+		remainder = (dbl_val - quotient) * base;
 		remainders.push_back(remainder);
 	}
 
     inline void reset() {
-        hex_num_str = "";
+        result = "";
         remainders.clear();
     }
 
@@ -117,7 +116,6 @@ private:
 		}
 	}
 
-    string hex_num_str;
 	vector<int> remainders;
 	map<int, string> hex_map;
 };
@@ -128,16 +126,13 @@ public:
     Decimal& implFromOctal(const string& num_str);
     Decimal& implFromBinary(const string& num_str);
 
-    inline int getDecimal() const {
-        return dec_num;
-    }
-
 private:
     inline void reset() {
+        result = "";
         dec_num = ct = power = 0;
     }
 
-    int ct, digit, power;
+    int ct, dec_num, digit, power;
 };
 
 class Octal : public Conv<Octal> {
@@ -147,24 +142,18 @@ public:
     }
 
     Octal& implFromHex(const string& num_str);
-    Octal& implFromDecimal(const int& num);
+    Octal& implFromDecimal(const string& num_str);
     Octal& implFromBinary(const string& num_str);
-
-    inline string getOctal() const {
-        return oct_num_str;
-    }
 
 private:
 	inline void setRemainder() {
-		remainder = (val - quotient) * base;
-		oct_num_str.insert(0, to_string(remainder));
+		remainder = (dbl_val - quotient) * base;
+		result.insert(0, to_string(remainder));
     }
 
     inline void reset() {
-        oct_num_str = "";
+        result = "";
     }
-
-    string oct_num_str;
 };
 
 class Binary : public Conv<Binary> {
@@ -175,21 +164,18 @@ public:
     }
 
     Binary& implFromHex(const string& num_str);
-    Binary& implFromDecimal(const int& num);
+    Binary& implFromDecimal(const string& num_str);
     Binary& implFromOctal(const string& num_str);
-
-    inline string getBinary() const {
-        return bin_num_str;
-    }
 
 private:
 	inline void setRemainder() {
 		remainder = int_val % base;
-        bin_num_str.insert(0, to_string(remainder));
+        result.insert(0, to_string(remainder));
 	}
 
     inline void reset() {
-        bin_num_str = "";
+        result = "";
+        int_val = 0;
     }
 
 	inline void setBinmap() {
@@ -200,7 +186,6 @@ private:
     }
 
     int int_val;
-	string bin_num_str;
 	map<string, string> bin_map;
 };
 

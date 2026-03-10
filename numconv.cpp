@@ -1,13 +1,11 @@
 #include "numconv.h"
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
-
-//temp:
-#include <cassert>
 
 using namespace std;
 
@@ -19,7 +17,6 @@ Commands
     dec     Convert to decimal
     oct     Convert to octal
     bin     Convert to binary
-    all     Convert to each of the above
 Options
     --from-hex, -x  Parse argument as hexadecimal
     --from-dec, -d  Parse argument as decimal
@@ -44,9 +41,10 @@ Arguments
 // 10. hexnum = int(str(remainder3) + str(remainder2) + str(remainder1))
 
 
-string padLeadingZeros(const string& num_str, size_t bgl) {
-    size_t len = num_str.length();
-    int width = len + ((bgl - (len % bgl)) % bgl);
+string padLeadingZeros(const string& num_str, size_t grp_len) {
+    size_t num_len = num_str.length();
+    size_t zero_count = (grp_len - (num_len % grp_len)) % grp_len;
+    size_t width = num_len + zero_count;
 
     stringstream ss;
     ss << setfill('0') << setw(width) << num_str;
@@ -64,139 +62,160 @@ void trimLeadingZeros(string& num_str) {
 }
 
 string trimPrefix(const string& num_str, const string& prefix) {
-    if (num_str.find(prefix) == 0)
-        return num_str.substr(prefix.length());
+    size_t num_len = num_str.length();
+
+    if (!num_len) return "0";
+
+    size_t pr_len = prefix.length();
+
+    if (num_str.find(prefix) == 0 && num_len > pr_len)
+        return num_str.substr(pr_len);
+
     return num_str;
 }
 
-Hex& Hex::implFromDecimal(const int& num) {
-    this->reset();
+Hex& Hex::implFromDecimal(const string& num_str) {
+    reset();
 
-    val = num;
-    do {
-        quotient = this->getQuotient(val);
-        this->setRemainder();
-    } while (quotient > 0);
+    try {
+        dbl_val = stoi(num_str);
 
-    for (int i = remainders.size() - 1; i > -1; --i) {
-        hex_num_str.append(hex_map[remainders[i]]);
+        do {
+            setQuotient();
+            setRemainder();
+        } while (quotient > 0);
+
+        for (int i = remainders.size() - 1; i > -1; --i) {
+            result.append(hex_map[remainders[i]]);
+        }
+    } catch (const invalid_argument& e) {
+        cerr << "Error: " << e.what() << endl;
     }
 
     return *this;
 }
 
 Hex& Hex::implFromOctal(const string& num_str) {
-    this->reset();
+    reset();
 
     string oct_val = trimPrefix(num_str, "0");
-    string bin_str;
-    int ct = 0;
+    string bin_grp_str, bin_grp, bin_val, oct_digit, hex_num_str;
+    size_t ct = 0, grp_len = 3;  // Bit group length
 
     Binary* bin = new Binary();
 
     while (oct_val[ct]) {
-        bin_str += bin->fromDecimal(oct_val[ct] - '0').getBinary();
+        oct_digit += oct_val[ct];
+        bin_val = bin->fromDecimal(oct_digit).get();
+        bin_grp_str += padLeadingZeros(bin_val, grp_len);
+        oct_digit = "";
         ct++;
     }
 
-    delete bin;
+    grp_len = 4;
+    bin_grp_str = padLeadingZeros(bin_grp_str, grp_len);
 
-    size_t bgl = 4;  // Bit group length
-    string padded_num_str = padLeadingZeros(bin_str, bgl);
-    string bin_group, hex_digit, temp_str;
-
-    for (int i = padded_num_str.length() - bgl; i > -1; i -= bgl) {
-        bin_group = padded_num_str.substr(i, bgl);
-        hex_digit = this->fromBinary(bin_group).getHex();
-        temp_str.insert(0, hex_digit);
+    for (int i = bin_grp_str.length() - grp_len; i > -1; i -= grp_len) {
+        bin_grp = bin_grp_str.substr(i, grp_len);
+        hex_num_str.insert(0, fromBinary(bin_grp).get());
     }
 
-    hex_num_str = temp_str;
+    result = hex_num_str;
+    delete bin;
 
     return *this;
 }
 
 Hex& Hex::implFromBinary(const string& num_str) {
     Decimal* dec = new Decimal();
-    int num = dec->fromBinary(num_str).getDecimal();
+    string dec_str = dec->fromBinary(num_str).get();
     delete dec;
 
-    return this->fromDecimal(num);
+    return fromDecimal(dec_str);
 }
 
 Decimal& Decimal::implFromHex(const string& num_str) {
-    this->reset();
+    reset();
 
     string hex_val = trimPrefix(num_str, "0x");
-    size_t len = hex_val.length();
 
-    if (len != 0) {
-        for (int i = len - 1; i > -1; --i) {
-            digit = hex_numbers.find(hex_val[i]);
-            dec_num += (digit * pow(16, power));
-            power++;
-        }
+    for (int i = hex_val.length() - 1; i > -1; --i) {
+        digit = hex_numbers.find(hex_val[i]);
+        dec_num += (digit * pow(16, power));
+        power++;
     }
+
+    result = to_string(dec_num);
 
     return *this;
 }
 
 Decimal& Decimal::implFromOctal(const string& num_str) {
-    this->reset();
+    reset();
 
     string oct_val = trimPrefix(num_str, "0");
 
-    for (int i = oct_val.length() - 1; i > -1; --i) {
-        temp = oct_val[i];
-        digit = stoi(temp, &sz);
-        dec_num += (digit * pow(8, power));
-        power++;
+    try {
+        for (int i = oct_val.length() - 1; i > -1; --i) {
+            temp = oct_val[i];
+            digit = stoi(temp);
+            dec_num += (digit * pow(8, power));
+            power++;
+        }
+
+        result = to_string(dec_num);
+    } catch (const invalid_argument& e) {
+        cerr << "Error: " << e.what() << endl;
     }
 
     return *this;
 }
 
 Decimal& Decimal::implFromBinary(const string& num_str) {
-    this->reset();
+    reset();
 
-    for (int i = num_str.length() - 1; i > -1; --i) {
-        temp = num_str[ct];
-        digit = stoi(temp, &sz);
-        dec_num += (digit * pow(2, i));
-        ct++;
+    try {
+        for (int i = num_str.length() - 1; i > -1; --i) {
+            temp = num_str[ct];
+            digit = stoi(temp);
+            dec_num += (digit * pow(2, i));
+            ct++;
+        }
+
+        result = to_string(dec_num);
+    } catch (const invalid_argument& e) {
+        cerr << "Error: " << e.what() << endl;
     }
 
     return *this;
 }
 
 Octal& Octal::implFromHex(const string& num_str) {
-    this->reset();
+    reset();
 
-    size_t bgl = 4;  // Bit group length
+    size_t grp_len = 4;  // Bit group length
     string hex_val = trimPrefix(num_str, "0x");
-    string bin_str, bin_digit;
-    int oct_digit;
+    string bin_str, bin_group, bin_digit, oct_digit, hex_digit;
 
     Binary* bin = new Binary();
     Decimal* dec = new Decimal();
-    string hex_digit;
 
     for (int i = hex_val.length() - 1; i > -1; --i) {
         hex_digit = hex_val[i];
-        bin_digit = bin->fromHex(hex_digit).getBinary();
-        bin_str.insert(0, padLeadingZeros(bin_digit, bgl));
+        bin_digit = bin->fromHex(hex_digit).get();
+        bin_str.insert(0, padLeadingZeros(bin_digit, grp_len));
     }
 
-    bgl = 3;
-    string bin_group, padded_num_str = padLeadingZeros(bin_str, bgl);
+    grp_len = 3;
+    string padded_num_str = padLeadingZeros(bin_str, grp_len);
 
-    for (int i = padded_num_str.length() - bgl; i > -1; i -= bgl) {
-        bin_group = padded_num_str.substr(i, bgl);
-        oct_digit = dec->fromBinary(bin_group).getDecimal();
-        oct_num_str.insert(0, to_string(oct_digit));
+    for (int i = padded_num_str.length() - grp_len; i > -1; i -= grp_len) {
+        bin_group = padded_num_str.substr(i, grp_len);
+        oct_digit = dec->fromBinary(bin_group).get();
+        result.insert(0, oct_digit);
     }
 
-    trimLeadingZeros(oct_num_str);
+    trimLeadingZeros(result);
 
     delete bin;
     delete dec;
@@ -204,31 +223,35 @@ Octal& Octal::implFromHex(const string& num_str) {
     return *this;
 }
 
-Octal& Octal::implFromDecimal(const int& num) {
-    this->reset();
+Octal& Octal::implFromDecimal(const string& num_str) {
+    reset();
 
-    val = num;
-    do {
-        quotient = this->getQuotient(val);
-        this->setRemainder();
-    } while (quotient > 0);
+    try {
+        dbl_val = stoi(num_str);
+        do {
+            setQuotient();
+            setRemainder();
+        } while (quotient > 0);
+    } catch (const invalid_argument& e) {
+        cerr << "Error: " << e.what() << endl;
+    }
 
     return *this;
 }
 
 Octal& Octal::implFromBinary(const string& num_str) {
-    this->reset();
+    reset();
 
-    size_t bgl = 3;  // Bit group length
-    string bin_group, padded_num_str = padLeadingZeros(num_str, bgl);
-    int digit;
+    size_t grp_len = 3;  // Bit group length
+    string padded_num_str = padLeadingZeros(num_str, grp_len);
+    string bin_group, oct_digit;
 
     Decimal* dec = new Decimal();
 
-    for (int i = padded_num_str.length() - bgl; i > -1; i -= bgl) {
-        bin_group = padded_num_str.substr(i, bgl);
-        digit = dec->fromBinary(bin_group).getDecimal();
-        oct_num_str.insert(0, to_string(digit));
+    for (int i = padded_num_str.length() - grp_len; i > -1; i -= grp_len) {
+        bin_group = padded_num_str.substr(i, grp_len);
+        oct_digit = dec->fromBinary(bin_group).get();
+        result.insert(0, oct_digit);
     }
 
     delete dec;
@@ -237,47 +260,55 @@ Octal& Octal::implFromBinary(const string& num_str) {
 }
 
 Binary& Binary::implFromHex(const string& num_str) {
-    this->reset();
+    reset();
 
     string hex_val = trimPrefix(num_str, "0x");
 
     for (int i = 0; i < hex_val.length(); i++) {
         temp = hex_val[i];
-        bin_num_str.append(bin_map[temp]);
+        result.append(bin_map[temp]);
     }
 
-    trimLeadingZeros(bin_num_str);
+    trimLeadingZeros(result);
 
     return *this;
 }
 
-Binary& Binary::implFromDecimal(const int& num) {
-    this->reset();
+Binary& Binary::implFromDecimal(const string& num_str) {
+    reset();
 
-    int_val = num;
-    do {
-        this->setRemainder();
-        int_val /= base;
-    } while (int_val > 0);
+    try {
+        int_val = stoi(num_str);
 
-    trimLeadingZeros(bin_num_str);
+        do {
+            setRemainder();
+            int_val /= base;
+        } while (int_val > 0);
+
+        trimLeadingZeros(result);
+    } catch (const invalid_argument& e) {
+        cerr << "Error: " << e.what() << endl;
+    }
 
     return *this;
 }
 
 Binary& Binary::implFromOctal(const string& num_str) {
-    this->reset();
+    reset();
 
     string temp_str, bin_group, oct_val = trimPrefix(num_str, "0");
-    size_t bgl = 3;  // Bit group length
+    string bin_num_str, bin_grp, oct_digit;
+    size_t grp_len = 3;  // Bit group length
 
     for (int i = 0; i < oct_val.length(); i++) {
-        bin_group = this->fromDecimal(oct_val[i] - '0').getBinary();
-        temp_str.append(padLeadingZeros(bin_group, bgl));
+        oct_digit += oct_val[i];
+        bin_grp = fromDecimal(oct_digit).get();
+        bin_num_str.append(padLeadingZeros(bin_grp, grp_len));
+        oct_digit = "";
     }
 
-    bin_num_str = temp_str;
-    trimLeadingZeros(bin_num_str);
+    result = bin_num_str;
+    trimLeadingZeros(result);
 
     return *this;
 }
@@ -352,24 +383,25 @@ void analyze(string expected, string actual) {
 }
 
 void test_conversions(Hex& hex, Decimal& dec, Octal& oct, Binary& bin) {
-    analyze("0x10", hex.fromDecimal(16).formatHex().getHex());
-    analyze("0x10", hex.fromBinary("10000").formatHex().getHex());
+    analyze("0x10", hex.fromDecimal("16").formatHex().get());
+    analyze("0x10", hex.fromOctal("020").formatHex().get());
+    analyze("0x10", hex.fromBinary("10000").formatHex().get());
 
-    analyze("16", to_string(dec.fromHex("10").getDecimal()));
-    analyze("16", to_string(dec.fromBinary("10000").getDecimal()));
+    analyze("16", dec.fromHex("0x10").get());
+    analyze("16", dec.fromOctal("020").get());
+    analyze("16", dec.fromBinary("10000").get());
 
-    analyze("20", oct.fromDecimal(16).getOctal());
-    analyze("20", oct.fromBinary("10000").getOctal());
+    analyze("20", oct.fromHex("0x10").get());
+    analyze("20", oct.fromDecimal("16").get());
+    analyze("20", oct.fromBinary("10000").get());
 
-    analyze("10000", bin.fromHex("10").getBinary());
-    //analyze("10000", bin.fromDecimal(16).getBinary());
+    analyze("10000", bin.fromHex("0x10").get());
+    analyze("10000", bin.fromDecimal("16").get());
+    analyze("10000", bin.fromOctal("020").get());
 }
 
 int main(int argc, char* argv[]) {
-    int num, ct = 0;
     string str_val;
-    size_t sz;
-
     Hex hex;
     Decimal dec;
     Octal oct;
@@ -405,15 +437,15 @@ int main(int argc, char* argv[]) {
                         cout << num_str << endl;
                         break;
                     case NumType::Decimal:
-                        num = dec.fromHex(num_str).getDecimal();
-                        cout << num << endl;
+                        str_val = dec.fromHex(num_str).get();
+                        cout << str_val << endl;
                         break;
                     case NumType::Octal:
-                        str_val = oct.fromHex(num_str).getOctal();
+                        str_val = oct.fromHex(num_str).get();
                         cout << str_val << endl;
                         break;
                     case NumType::Binary:
-                        str_val = bin.fromHex(num_str).getBinary();
+                        str_val = bin.fromHex(num_str).get();
                         cout << str_val << endl;
                         break;
                     default:
@@ -426,24 +458,23 @@ int main(int argc, char* argv[]) {
                     cout << "Not a valid decimal number" << endl;
                     exit(EXIT_FAILURE);
                 }
-                num = stoi(num_str, &sz);
 
                 switch (command) {
                     case NumType::Hexadecimal:
-                        str_val = hex.fromDecimal(num)
+                        str_val = hex.fromDecimal(num_str)
                             .formatHex()
-                            .getHex();
+                            .get();
                         cout << str_val << endl;
                         break;
                     case NumType::Decimal:
-                        cout << num << endl;
+                        cout << num_str << endl;
                         break;
                     case NumType::Octal:
-                        str_val = oct.fromDecimal(num).getOctal();
+                        str_val = oct.fromDecimal(num_str).get();
                         cout << str_val << endl;
                         break;
                     case NumType::Binary:
-                        str_val = bin.fromDecimal(num).getBinary();
+                        str_val = bin.fromDecimal(num_str).get();
                         cout << str_val << endl;
                         break;
                     default:
@@ -461,18 +492,18 @@ int main(int argc, char* argv[]) {
                     case NumType::Hexadecimal:
                         str_val = hex.fromOctal(num_str)
                             .formatHex()
-                            .getHex();
+                            .get();
                         cout << str_val << endl;
                         break;
                     case NumType::Decimal:
-                        num = dec.fromOctal(num_str).getDecimal();
-                        cout << num << endl;
+                        str_val = dec.fromOctal(num_str).get();
+                        cout << str_val << endl;
                         break;
                     case NumType::Octal:
                         cout << num_str << endl;
                         break;
                     case NumType::Binary:
-                        str_val = bin.fromOctal(num_str).getBinary();
+                        str_val = bin.fromOctal(num_str).get();
                         cout << str_val << endl;
                         break;
                     default:
@@ -490,15 +521,15 @@ int main(int argc, char* argv[]) {
                     case NumType::Hexadecimal:
                         str_val = hex.fromBinary(num_str)
                             .formatHex()
-                            .getHex();
+                            .get();
                         cout << str_val << endl;
                         break;
                     case NumType::Decimal:
-                        num = dec.fromBinary(num_str).getDecimal();
-                        cout << num << endl;
+                        str_val = dec.fromBinary(num_str).get();
+                        cout << str_val << endl;
                         break;
                     case NumType::Octal:
-                        str_val = oct.fromBinary(num_str).getOctal();
+                        str_val = oct.fromBinary(num_str).get();
                         cout << str_val << endl;
                         break;
                     case NumType::Binary:
@@ -517,6 +548,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    int ct = 0;
     string input;
 
 	while (true) {
@@ -531,14 +563,12 @@ int main(int argc, char* argv[]) {
 			ct++;
 		}
 
-		num = stoi(input, &sz);
-
 		// DECIMAL TO HEXADECIMAL
-		str_val = hex.fromDecimal(num).getHex();
+		str_val = hex.fromDecimal(input).get();
 		cout << "hexadecimal -> " << str_val << endl;
 
 		// DECIMAL TO BINARY
-		str_val = bin.fromDecimal(num).getBinary();
+		str_val = bin.fromDecimal(input).get();
 		cout << "binary -> " << str_val << endl;
 
 		// HEXADECIMAL TO DECIMAL
@@ -554,11 +584,11 @@ int main(int argc, char* argv[]) {
 			ct++;
 		}
 
-		num = dec.fromHex(input).getDecimal();
-		cout << "decimal -> " << num << endl;
+		str_val = dec.fromHex(input).get();
+		cout << "decimal -> " << str_val << endl;
 
 		// HEXADECIMAL TO BINARY
-		str_val = bin.fromHex(input).getBinary();
+		str_val = bin.fromHex(input).get();
 		cout << "binary -> " << str_val << endl;
 
 		// BINARY TO DECIMAL
@@ -574,11 +604,11 @@ int main(int argc, char* argv[]) {
 			ct++;
 		}
 
-		num = dec.fromBinary(input).getDecimal();
-		cout << "decimal -> " << num << endl;
+		str_val = dec.fromBinary(input).get();
+		cout << "decimal -> " << str_val << endl;
 
 		// BINARY TO HEXADECIMAL
-		str_val = hex.fromBinary(input).getHex();
+		str_val = hex.fromBinary(input).get();
 		cout << "hexadecimal -> " << str_val << endl;
 
 		// CONTINUE?
