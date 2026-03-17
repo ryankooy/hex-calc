@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cctype>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -11,12 +12,13 @@ using namespace std;
 
 const string usage = R"(
 Usage
-    numconv hex|dec|oct|bin --from-hex|--from-dec|--from-oct|--from-bin NUMBER
+    numconv hex|dec|oct|bin|all --from-hex|--from-dec|--from-oct|--from-bin NUMBER
 Commands
     hex     Convert to hexadecimal
     dec     Convert to decimal
     oct     Convert to octal
     bin     Convert to binary
+    all     Convert to each of the above
 Options
     --from-hex, -x  Parse argument as hexadecimal
     --from-dec, -d  Parse argument as decimal
@@ -50,6 +52,12 @@ string padLeadingZeros(const string& num_str, size_t grp_len) {
     ss << setfill('0') << setw(width) << num_str;
 
     return ss.str();
+}
+
+string lowerCase(const string& num_str) {
+    string str = num_str;
+    transform(str.begin(), str.end(), str.begin(), ::tolower);
+    return str;
 }
 
 void trimLeadingZeros(string& num_str) {
@@ -137,7 +145,7 @@ Hex& Hex::implFromBinary(const string& num_str) {
 Decimal& Decimal::implFromHex(const string& num_str) {
     reset();
 
-    string hex_val = trimPrefix(num_str, "0x");
+    string hex_val = lowerCase(trimPrefix(num_str, "0x"));
 
     for (int i = hex_val.length() - 1; i > -1; --i) {
         digit = hex_numbers.find(hex_val[i]);
@@ -193,9 +201,9 @@ Decimal& Decimal::implFromBinary(const string& num_str) {
 Octal& Octal::implFromHex(const string& num_str) {
     reset();
 
-    size_t grp_len = 4;  // Bit group length
-    string hex_val = trimPrefix(num_str, "0x");
+    string hex_val = lowerCase(trimPrefix(num_str, "0x"));
     string bin_str, bin_group, bin_digit, oct_digit, hex_digit;
+    size_t grp_len = 4;  // Bit group length
 
     Binary* bin = new Binary();
     Decimal* dec = new Decimal();
@@ -262,7 +270,7 @@ Octal& Octal::implFromBinary(const string& num_str) {
 Binary& Binary::implFromHex(const string& num_str) {
     reset();
 
-    string hex_val = trimPrefix(num_str, "0x");
+    string hex_val = lowerCase(trimPrefix(num_str, "0x"));
 
     for (int i = 0; i < hex_val.length(); i++) {
         temp = hex_val[i];
@@ -318,6 +326,7 @@ NumType commandToNumType(const string& cmd) {
     if (cmd == "dec") return NumType::Decimal;
     if (cmd == "oct") return NumType::Octal;
     if (cmd == "bin") return NumType::Binary;
+    if (cmd == "all") return NumType::Any;
     return NumType::Unknown;
 }
 
@@ -335,7 +344,7 @@ NumType optionToNumType(const string& opt) {
 
 bool validHex(const string& num_str) {
     int i = 0;
-    string value = trimPrefix(num_str, "0x");
+    string value = lowerCase(trimPrefix(num_str, "0x"));
 
     while (value[i]) {
         if (hex_numbers.find(value[i]) == -1)
@@ -400,14 +409,33 @@ void test_conversions(Hex& hex, Decimal& dec, Octal& oct, Binary& bin) {
     analyze("10000", bin.fromOctal("020").get());
 }
 
+template<typename T>
+string convertFromHex(Conv<T>& obj, const string& num_str) {
+    return obj.fromHex(num_str).get();
+}
+
+template<typename T>
+string convertFromDecimal(Conv<T>& obj, const string& num_str) {
+    return obj.fromDecimal(num_str).get();
+}
+
+template<typename T>
+string convertFromOctal(Conv<T>& obj, const string& num_str) {
+    return obj.fromOctal(num_str).get();
+}
+
+template<typename T>
+string convertFromBinary(Conv<T>& obj, const string& num_str) {
+    return obj.fromBinary(num_str).get();
+}
+
 int main(int argc, char* argv[]) {
-    string str_val;
     Hex hex;
     Decimal dec;
     Octal oct;
     Binary bin;
 
-    //temp:
+    // Run unit tests
     test_conversions(hex, dec, oct, bin);
 
     if (argc > 1) {
@@ -434,19 +462,22 @@ int main(int argc, char* argv[]) {
 
                 switch (command) {
                     case NumType::Hexadecimal:
-                        cout << num_str << endl;
+                        cout << convertFromHex(hex, num_str) << endl;
                         break;
                     case NumType::Decimal:
-                        str_val = dec.fromHex(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromHex(dec, num_str) << endl;
                         break;
                     case NumType::Octal:
-                        str_val = oct.fromHex(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromHex(oct, num_str) << endl;
                         break;
                     case NumType::Binary:
-                        str_val = bin.fromHex(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromHex(bin, num_str) << endl;
+                        break;
+                    case NumType::Any:
+                        cout << "Hex: " << convertFromHex(hex, num_str) << endl;
+                        cout << "Decimal: " << convertFromHex(dec, num_str) << endl;
+                        cout << "Octal: " << convertFromHex(oct, num_str) << endl;
+                        cout << "Binary: " << convertFromHex(bin, num_str) << endl;
                         break;
                     default:
                         cout << usage << endl;
@@ -461,21 +492,22 @@ int main(int argc, char* argv[]) {
 
                 switch (command) {
                     case NumType::Hexadecimal:
-                        str_val = hex.fromDecimal(num_str)
-                            .formatHex()
-                            .get();
-                        cout << str_val << endl;
+                        cout << convertFromDecimal(hex, num_str) << endl;
                         break;
                     case NumType::Decimal:
-                        cout << num_str << endl;
+                        cout << convertFromDecimal(dec, num_str) << endl;
                         break;
                     case NumType::Octal:
-                        str_val = oct.fromDecimal(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromDecimal(oct, num_str) << endl;
                         break;
                     case NumType::Binary:
-                        str_val = bin.fromDecimal(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromDecimal(bin, num_str) << endl;
+                        break;
+                    case NumType::Any:
+                        cout << "Hex: " << convertFromDecimal(hex, num_str) << endl;
+                        cout << "Decimal: " << convertFromDecimal(dec, num_str) << endl;
+                        cout << "Octal: " << convertFromDecimal(oct, num_str) << endl;
+                        cout << "Binary: " << convertFromDecimal(bin, num_str) << endl;
                         break;
                     default:
                         cout << usage << endl;
@@ -490,21 +522,22 @@ int main(int argc, char* argv[]) {
 
                 switch (command) {
                     case NumType::Hexadecimal:
-                        str_val = hex.fromOctal(num_str)
-                            .formatHex()
-                            .get();
-                        cout << str_val << endl;
+                        cout << convertFromOctal(hex, num_str) << endl;
                         break;
                     case NumType::Decimal:
-                        str_val = dec.fromOctal(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromOctal(dec, num_str) << endl;
                         break;
                     case NumType::Octal:
-                        cout << num_str << endl;
+                        cout << convertFromOctal(oct, num_str) << endl;
                         break;
                     case NumType::Binary:
-                        str_val = bin.fromOctal(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromOctal(bin, num_str) << endl;
+                        break;
+                    case NumType::Any:
+                        cout << "Hex: " << convertFromOctal(hex, num_str) << endl;
+                        cout << "Decimal: " << convertFromOctal(dec, num_str) << endl;
+                        cout << "Octal: " << convertFromOctal(oct, num_str) << endl;
+                        cout << "Binary: " << convertFromOctal(bin, num_str) << endl;
                         break;
                     default:
                         cout << usage << endl;
@@ -519,21 +552,22 @@ int main(int argc, char* argv[]) {
 
                 switch (command) {
                     case NumType::Hexadecimal:
-                        str_val = hex.fromBinary(num_str)
-                            .formatHex()
-                            .get();
-                        cout << str_val << endl;
+                        cout << convertFromBinary(hex, num_str) << endl;
                         break;
                     case NumType::Decimal:
-                        str_val = dec.fromBinary(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromBinary(dec, num_str) << endl;
                         break;
                     case NumType::Octal:
-                        str_val = oct.fromBinary(num_str).get();
-                        cout << str_val << endl;
+                        cout << convertFromBinary(oct, num_str) << endl;
                         break;
                     case NumType::Binary:
-                        cout << num_str << endl;
+                        cout << convertFromBinary(bin, num_str) << endl;
+                        break;
+                    case NumType::Any:
+                        cout << "Hex: " << convertFromBinary(hex, num_str) << endl;
+                        cout << "Decimal: " << convertFromBinary(dec, num_str) << endl;
+                        cout << "Octal: " << convertFromBinary(oct, num_str) << endl;
+                        cout << "Binary: " << convertFromBinary(bin, num_str) << endl;
                         break;
                     default:
                         cout << usage << endl;
@@ -548,85 +582,6 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    int ct = 0;
-    string input;
-
-	while (true) {
-		cout << "Enter a decimal number: ";
-		cin >> input;
-
-		while (input[ct]) {
-			if (isalpha(input[ct])) {
-				cout << "Not a valid decimal number" << endl;
-				exit(EXIT_FAILURE);
-			}
-			ct++;
-		}
-
-		// DECIMAL TO HEXADECIMAL
-		str_val = hex.fromDecimal(input).get();
-		cout << "hexadecimal -> " << str_val << endl;
-
-		// DECIMAL TO BINARY
-		str_val = bin.fromDecimal(input).get();
-		cout << "binary -> " << str_val << endl;
-
-		// HEXADECIMAL TO DECIMAL
-		cout << "Enter a hexadecimal number: ";
-		cin >> input;
-		ct = 0;
-
-		while (input[ct]) {
-			if (hex_numbers.find(input[ct]) == -1) {
-				cout << "Not a valid hexadecimal number" << endl;
-				exit(EXIT_FAILURE);
-			}
-			ct++;
-		}
-
-		str_val = dec.fromHex(input).get();
-		cout << "decimal -> " << str_val << endl;
-
-		// HEXADECIMAL TO BINARY
-		str_val = bin.fromHex(input).get();
-		cout << "binary -> " << str_val << endl;
-
-		// BINARY TO DECIMAL
-		cout << "Enter a binary number: ";
-		cin >> input;
-		ct = 0;
-
-		while (input[ct]) {
-			if (input[ct] != '0' && input[ct] != '1') {
-				cout << "Not a valid binary number" << endl;
-				exit(EXIT_FAILURE);
-			}
-			ct++;
-		}
-
-		str_val = dec.fromBinary(input).get();
-		cout << "decimal -> " << str_val << endl;
-
-		// BINARY TO HEXADECIMAL
-		str_val = hex.fromBinary(input).get();
-		cout << "hexadecimal -> " << str_val << endl;
-
-		// CONTINUE?
-		cout << "Again? (y/n): ";
-		cin >> input;
-
-		while (true) {
-			if (input == "y" || input == "Y")
-				break;
-			else if (input == "n" || input == "N") {
-				cout << "Bye.\n";
-				exit(EXIT_SUCCESS);
-			} else {
-				cout << "Again? (y/n): ";
-				cin >> input;
-			}
-		}
-	}
-
+    cout << usage << endl;
 	return 0;
 }
